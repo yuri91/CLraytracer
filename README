@@ -1,0 +1,13 @@
+ CLraytracer is a raytracing based renderer that take advantage of GPU parallelism through OpenCL .
+ 
+ Working features:
+ *support for spheres,basic materials and light points to place in the scene
+ *lambertian behavior of diffuse light and shadows
+ 
+ 
+ TODO:
+ *reflection and refraction
+ *load the scene from a file
+ *draw directly in an opengl texture
+ *new shapes
+ *textures
