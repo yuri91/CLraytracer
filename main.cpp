@@ -29,7 +29,7 @@
 #include "renderer.h"
 
 #define WIDTH 1024
-#define HEIGHT 512
+#define HEIGHT 1024
 
 int windowCloseCallback( )
 {
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 	}
 	struct on_terminate { ~on_terminate(){ glfwTerminate(); } } _l1;
 
-	if( ! glfwOpenWindow( 1024,768, 0,0,0,0, 0, 0, GLFW_WINDOW  ) ) {
+	if( ! glfwOpenWindow( WIDTH,HEIGHT, 0,0,0,0, 0, 0, GLFW_WINDOW  ) ) {
 		throw( "glfwOpenWindow failed" );
 	}
 	struct on_close { ~on_close(){ glfwCloseWindow(); } } _l2;

@@ -16,7 +16,7 @@ find_package(OpenCL REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLFW REQUIRED)
 
-INCLUDE_DIRECTORIES(${GLEW_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR} ${OPENCL_INCLUDE_DIR} ${GLFW_INCLUDE_DIR} "/tmp/oglplus-0.14.0/include" "/tmp/oglplus-0.14.0/_build/include" )
+INCLUDE_DIRECTORIES(${GLEW_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR} ${OPENCL_INCLUDE_DIR} ${GLFW_INCLUDE_DIR} ${OGLPLUS_INCLUDE_DIR} )
 
 add_executable(clraytracer main.cpp renderer.cpp)
 
