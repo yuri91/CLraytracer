@@ -10,12 +10,14 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 
+find_package(PkgConfig)
+pkg_check_modules(GLEW glew)
 find_package(OpenCL REQUIRED)
-find_package(PNG REQUIRED)
+find_package(OpenGL REQUIRED)
+find_package(GLFW REQUIRED)
 
-
-INCLUDE_DIRECTORIES(${OPENCL_INCLUDE_DIR} ${PNG_INCLUDE_DIRS})
+INCLUDE_DIRECTORIES(${GLEW_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR} ${OPENCL_INCLUDE_DIR} ${GLFW_INCLUDE_DIR} "/tmp/oglplus-0.14.0/include" "/tmp/oglplus-0.14.0/_build/include" )
 
 add_executable(clraytracer main.cpp renderer.cpp)
 
-TARGET_LINK_LIBRARIES(clraytracer ${OPENCL_LIBRARIES} ${PNG_LIBRARIES})
+TARGET_LINK_LIBRARIES(clraytracer ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${OPENCL_LIBRARIES} ${GLFW_LIBRARIES})

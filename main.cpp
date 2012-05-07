@@ -20,59 +20,218 @@
  */
 
 
-
+#include <GL/glew.h>
+#include <GL/glfw.h>
+#include <GL/gl.h>
+#include <oglplus/all.hpp>
 #include <iostream>
 
-#include <png++/png.hpp>
-
 #include "renderer.h"
+
+#define WIDTH 1024
+#define HEIGHT 512
+
+int windowCloseCallback( )
+{
+	static int i = 0;
+	return i ++;
+}
+
+class GLRenderer
+{
+public:
+	oglplus::Context gl;
+	oglplus::VertexArray rect;
+	oglplus::Buffer verts;
+	oglplus::Program prog;
+	oglplus::Texture texture;
+	
+public:
+	GLRenderer( )
+	{
+		glfwSetWindowTitle("CLraytracer");
+	
+		// initializing openGL
+		{
+			using namespace oglplus;
+	
+			// vertex shader
+			{
+				oglplus::VertexShader vs;
+				vs.Source(" \
+					attribute vec3  Position; \
+					void main() \
+					{ \
+						gl_Position	 = vec4(Position,1); \
+						gl_TexCoord[0] = ( gl_Position + vec4(1,1,0,0) ) * 0.5; \
+					} \
+					");
+				vs.Compile();
+				prog.AttachShader( vs );
+			}
+		
+			// fragment shader
+			{
+				oglplus::FragmentShader fs;
+				fs.Source(" \
+					uniform sampler2D fava; \
+					void main() \
+					{ \
+						/*gl_FragColor = vec4(1,0,0,1.0);*/ \
+						gl_FragColor = texture2D( fava, gl_TexCoord[0].st ); \
+					} \
+					");
+				fs.Compile();
+				prog.AttachShader(fs);
+			}
+		
+			// link and use it
+			prog.Link();
+			prog.Use();
+	
+			//oglplus::VertexArray rect;
+			//oglplus::Buffer verts;
+			GLfloat rect_verts[12] = {
+				-1.0f, -1.0f, 0.0f,
+				-1.0f, 1.0f, 0.0f,
+				1.0f, -1.0f, 0.0f,
+				1.0f, 1.0f, 0.0f
+				};
+
+			// bind the VBO for the rect vertices
+			verts.Bind( Buffer::Target::Array );
+			// upload the data
+			Buffer::Data(
+				Buffer::Target::Array,
+				12,
+				rect_verts
+				);
+	
+			// setup the vertex attribs array for the vertices
+			VertexAttribArray vert_attr( prog, "Position" );
+			vert_attr.Setup( 3, DataType::Float );
+			vert_attr.Enable();
+	
+			gl.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			gl.ClearDepth(1.0f);
+		}
+	}
+	
+	~GLRenderer( )
+	{
+	}
+	
+	void setTexture( cl_float3 *data )
+	{
+		using namespace oglplus;
+		
+		texture.Bind( Texture::Target::_2D );
+		texture.MagFilter( Texture::Target::_2D, TextureMagFilter::Linear );
+		texture.MinFilter( Texture::Target::_2D, TextureMinFilter::Linear );
+		texture.Image2D( Texture::Target::_2D, 0, PixelDataInternalFormat::RGBA, WIDTH,HEIGHT, 0, PixelDataFormat::RGBA, PixelDataType::Float, data );
+	}
+	
+	void draw( )
+	{
+		using namespace oglplus;
+	
+		gl.Clear().ColorBuffer().DepthBuffer();
+		gl.DrawArrays( PrimitiveType::TriangleStrip, 0, 4 );
+	}
+	void mainLoop( )
+	{
+		while( glfwGetWindowParam(GLFW_OPENED) ) {
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			draw();
+			glfwSwapBuffers();
+			glfwPollEvents( );
+		}
+	}
+	
+};
 
 
 int main(int argc, char *argv[]) 
 {;
-    Renderer r;
-    
-    Scene s;
-    
-    s.eye = -10;
-    
-    s.viewW = 10;
-    s.viewH = 10;
-    
-    Light l = {{10,15,-10},{1,1,1}};
-    s.lights.push_back(l);
-    
-    Sphere sp1 = {{0,0,70},25,0};
-    Material m1 = {{0,0,0},{0,1,0}};
-    s.spheres.push_back(sp1);
-    s.materials.push_back(m1);
-    
-    Sphere sp2 = {{-3,0,30},9,1};
-    Material m2 = {{0,0,0},{1,0,0}};
-    s.spheres.push_back(sp2);
-    s.materials.push_back(m2);
-    
-    
-    Sphere sp3 = {{5,2,15},3,2};
-    Material m3 = {{0,0,0},{0,0,1}};
-    s.spheres.push_back(sp3);
-    s.materials.push_back(m3);
-    
-    
-    int imgW = 800;
-    int imgH = 800;
-    std::vector<cl_float3>  ris = r.compute(s,imgW,imgH);
-    
-    png::image<png::rgb_pixel> img(imgW,imgH);
-    
-    int j = 0;
-    for(auto i = ris.begin();i!=ris.end();++i,++j)
-    {
-	png::rgb_pixel p(255*(i->s[0]),255*(i->s[1]),255*(i->s[2])); 
-	img.set_pixel(j/imgW,j%imgW,p);
-    }
-    
-    img.write("test.png");
+	if( ! glfwInit() ) {
+		throw( "glfwInit failed" );
+	}
+	struct on_terminate { ~on_terminate(){ glfwTerminate(); } } _l1;
+
+	if( ! glfwOpenWindow( 1024,768, 0,0,0,0, 0, 0, GLFW_WINDOW  ) ) {
+		throw( "glfwOpenWindow failed" );
+	}
+	struct on_close { ~on_close(){ glfwCloseWindow(); } } _l2;
+
+	if( glewInit() != GLEW_OK ) {
+		throw( "glewInit failed" );
+	}
+	
+	try
+	{
+		GLRenderer GLr;
+		
+		
+		Renderer r;
+
+		Scene s;
+
+		s.eye = -10;
+
+		s.viewW = 10;
+		s.viewH = 10;
+
+		Light l = {{10,15,-10},{1,1,1}};
+		s.lights.push_back(l);
+
+		Sphere sp1 = {{0,0,70},25,0};
+		Material m1 = {{0,0,0},{0,1,0}};
+		s.spheres.push_back(sp1);
+		s.materials.push_back(m1);
+
+		Sphere sp2 = {{-3,0,30},9,1};
+		Material m2 = {{0,0,0},{1,0,0}};
+		s.spheres.push_back(sp2);
+		s.materials.push_back(m2);
+
+
+		Sphere sp3 = {{10,2,15},3,2};
+		Material m3 = {{0,0,0},{0,0,1}};
+		s.spheres.push_back(sp3);
+		s.materials.push_back(m3);
+
+
+		int imgW = WIDTH;
+		int imgH = HEIGHT;
+		std::vector<cl_float3> ris = r.compute(s,imgW,imgH);
+		GLr.setTexture( &ris[0] );
+		
+		
+		GLr.mainLoop();
+	}
+	catch( oglplus::CompileError &err )
+	{
+		std::cerr <<
+		"Error (in " << err.GLSymbol() << ", " <<
+		err.ClassName() << ": '" <<
+		err.ObjectDescription() << "'): " <<
+		err.what() <<
+		" [" << err.File() << ":" << err.Line() << "] ";
+		std::cerr << std::endl;
+		std::cerr << err.Log() << std::endl;
+		err.Cleanup();
+	}
+	catch( oglplus::Error &err )
+	{
+		std::cerr <<
+		"Error (in " << err.GLSymbol() << ", " <<
+		err.ClassName() << ": '" <<
+		err.ObjectDescription() << "'): " <<
+		err.what() <<
+		" [" << err.File() << ":" << err.Line() << "] ";
+		std::cerr << std::endl;
+		err.Cleanup();
+	}
    
     
     return EXIT_SUCCESS;
