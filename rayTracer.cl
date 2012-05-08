@@ -121,17 +121,17 @@ __kernel void rayTracer (__global float3* img,const int imgW,const int imgH,
 	r.dir = normalize(r.start - (float3)(0,0,eye));
 	
 	float3 color = (float3)(0,0,0);
-	float3 iterCoef = (float3)(1,1,1);
-	int missingIters = 100;
+	float iterCoef = 1;
+	int missingIters = 5;
 	
-	while( iterCoef.x>0 && iterCoef.y>0 && iterCoef.z>0 && missingIters > 0 ) {
+	while( iterCoef>0 && missingIters > 0 ) {
 		// finding the first surface colliding with the ray r
 		// its distance from the ray emitter will be t the
 		// hitting surface's index will be index
 		float t = 0;
 		int index = checkNearestSphereHit(r,spheres,nSph,&t);
 		if( index == -1 ) {
-			img[get_global_id(0)*imgW+get_global_id(1)]=(float3)(0.0f,0.0f,0.0f);
+			img[get_global_id(1)*imgW+get_global_id(0)]=(float3)(0.0f,0.0f,0.0f);
 			break;
 		}
 		float3 hitPoint = r.start + t*r.dir;
@@ -158,33 +158,32 @@ __kernel void rayTracer (__global float3* img,const int imgW,const int imgH,
 		
 			color += mat.color * diffuse_coef * shade * lights[j].color * iterCoef;
 			
-			/*
-            float fViewProjection = dot( r.dir, norm );
+			
+		float fViewProjection = dot( r.dir, norm );
 			float3 blinnDir = rToLight.dir - r.dir;
 			float temp = dot(blinnDir, blinnDir);
 			if( temp != 0.0f ) {
-				float blinnX = 1/sqrt(temp) * max(shade - fViewProjection , 0.0f);
-                float3 blinn = iterCoef * pow(blinnX, mat.power);
+				float blinn = 1/sqrt(temp) * max(shade - fViewProjection , 0.0f);
+				blinn = iterCoef * pow(blinn, mat.power);
 				color += blinn * ( mat.reflection * lights[j].color );
 			}
-			*/
+			
 		}
 		
 		// updating the ray
 		r.start = hitPoint;
 		r.dir = REFLECT( r.dir, norm );
-		iterCoef *= mat.reflection;
+		iterCoef *= sqrt(dot(mat.reflection,mat.reflection));
 		-- missingIters;
 	}
 	
 	
-	if(color.x>1)
-		color.x = 1;
-	if(color.y>1)
-		color.y = 1;
-	if(color.z>1)
-		color.z = 1;
+		
+	float exposure = -1.00f;
+	color.x = 1.0f - exp(color.x * exposure);
+	color.y = 1.0f - exp(color.y * exposure);
+	color.z = 1.0f - exp(color.z * exposure);
 	
-	img[get_global_id(0)*imgW+get_global_id(1)] = color;
+	img[get_global_id(1)*imgW+get_global_id(0)] = color;
 	
 }
