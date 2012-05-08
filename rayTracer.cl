@@ -35,8 +35,9 @@ typedef struct
 
 typedef struct 
 {
-	float reflection;
+	float3 reflection;
 	float3 color;
+	float power;
 }Material;
 
 typedef struct  
@@ -97,7 +98,9 @@ typedef struct
 		
 	}
 	return false;
- }
+}
+
+#define REFLECT(i,n) ( (i) - 2*dot((n),(i)) * (n) )
 
 __kernel void rayTracer (__global float3* img,const int imgW,const int imgH,
 						 const float viewW,const float viewH,const float eye,
@@ -116,33 +119,64 @@ __kernel void rayTracer (__global float3* img,const int imgW,const int imgH,
 	r.start.y = -(((float)get_global_id(1))/imgH) * viewH + viewH/2;
 	r.start.z = 0;
 	r.dir = normalize(r.start - (float3)(0,0,eye));
-
-	float t = 0;
-
-	int index = checkNearestSphereHit(r,spheres,nSph,&t);
-	if(index == -1)
-	{
-		img[get_global_id(0)*imgW+get_global_id(1)]=(float3)(0.0f,0.0f,0.0f);
-		return;
+	
+	float3 color = (float3)(0,0,0);
+	float3 iterCoef = (float3)(1,1,1);
+	int missingIters = 100;
+	
+	while( iterCoef.x>0 && iterCoef.y>0 && iterCoef.z>0 && missingIters > 0 ) {
+		// finding the first surface colliding with the ray r
+		// its distance from the ray emitter will be t the
+		// hitting surface's index will be index
+		float t = 0;
+		int index = checkNearestSphereHit(r,spheres,nSph,&t);
+		if( index == -1 ) {
+			img[get_global_id(0)*imgW+get_global_id(1)]=(float3)(0.0f,0.0f,0.0f);
+			break;
+		}
+		float3 hitPoint = r.start + t*r.dir;
+		Material mat = materials[spheres[index].materialID];
+		color += mat.color * ambient_coef * iterCoef;
+		float3 norm;
+		
+		// calculating the intensity of the light according
+		// to the lambert model
+		float shade;
+		int j;
+		for(j = 0;j<nLgh;j=j+1) {
+			Ray rToLight = {hitPoint,normalize(lights[j].pos-hitPoint)};
+			norm = normalize(hitPoint-spheres[index].pos);
+			shade = dot(norm,rToLight.dir);
+			if( shade < 0 ) {
+				// in shadow of this same sphere
+				continue;
+			}
+			if( checkIfOtherSphereHit(rToLight,spheres,nSph,index) ) {
+				// in shadow of another sphere
+				continue;
+			}
+		
+			color += mat.color * diffuse_coef * shade * lights[j].color * iterCoef;
+			
+			/*
+            float fViewProjection = dot( r.dir, norm );
+			float3 blinnDir = rToLight.dir - r.dir;
+			float temp = dot(blinnDir, blinnDir);
+			if( temp != 0.0f ) {
+				float blinnX = 1/sqrt(temp) * max(shade - fViewProjection , 0.0f);
+                float3 blinn = iterCoef * pow(blinnX, mat.power);
+				color += blinn * ( mat.reflection * lights[j].color );
+			}
+			*/
+		}
+		
+		// updating the ray
+		r.start = hitPoint;
+		r.dir = REFLECT( r.dir, norm );
+		iterCoef *= mat.reflection;
+		-- missingIters;
 	}
 	
-	float3 hitPoint = r.start + t*r.dir;
-	float3 color = materials[spheres[index].materialID].color*(ambient_coef);
-	float shade;
-	int j;
-	for(j = 0;j<nLgh;j=j+1)
-	{
-		Ray rToLight = {hitPoint,normalize(lights[j].pos-hitPoint)};
-		float3 norm = normalize(hitPoint-spheres[index].pos);
-		shade = dot(norm,rToLight.dir);
-		if(shade<0)
-			continue;
-		
-		if(checkIfOtherSphereHit(rToLight,spheres,nSph,index))
-			continue;
-		
-		color += materials[spheres[index].materialID].color*diffuse_coef*shade;
-	}
 	
 	if(color.x>1)
 		color.x = 1;
@@ -151,6 +185,6 @@ __kernel void rayTracer (__global float3* img,const int imgW,const int imgH,
 	if(color.z>1)
 		color.z = 1;
 	
-	img[get_global_id(0)*imgW+get_global_id(1)]=color;
+	img[get_global_id(0)*imgW+get_global_id(1)] = color;
 	
 }

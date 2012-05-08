@@ -41,6 +41,7 @@ struct Material
 {
     cl_float3 reflection;
     cl_float3 color;
+    cl_float power;
 };
 
 #endif

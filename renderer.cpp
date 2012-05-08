@@ -50,7 +50,8 @@ Renderer::Renderer()
 	program = cl::Program(context , sourceCode);
 	try
 	{
-		program.build(devices);
+		program.build( devices/*, "-Wall"*/ );
+		std::cout << "Building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices.front()) << std::endl;
 	}
 	catch(cl::Error& err)
 	{

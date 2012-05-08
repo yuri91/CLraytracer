@@ -28,8 +28,8 @@
 
 #include "renderer.h"
 
-#define WIDTH 1024
-#define HEIGHT 1024
+#define WIDTH 512
+#define HEIGHT 512
 
 int windowCloseCallback( )
 {
@@ -181,25 +181,39 @@ int main(int argc, char *argv[])
 		s.viewW = 10;
 		s.viewH = 10;
 
-		Light l = {{10,15,-10},{1,1,1}};
+		/*
+		Light l = {{10,15,-10},{.5,.5,.5}};
 		s.lights.push_back(l);
-
-		Sphere sp1 = {{0,0,70},25,0};
-		Material m1 = {{0,0,0},{0,1,0}};
+		
+		Light l2 = {{-10,-15,-10},{.5,.5,0}};
+		s.lights.push_back(l2);
+		
+		Light l3 = {{0,0,100},{.5,.5,0}};
+		s.lights.push_back(l3);
+		*/
+		Light l = {{0,0,-10},{.8,.8,.8}};
+		s.lights.push_back(l);
+		
+#define X(i) sin(i*2*M_PI/3)*10//*2/sqrt(3)
+#define Y(i) cos(i*2*M_PI/3)*10//*2/sqrt(3)
+		
+		Sphere sp1 = {{X(0),Y(0),30},10,0};
+		Material m1 = {{.5,.5,.5},{0,0.5,0},1};
 		s.spheres.push_back(sp1);
 		s.materials.push_back(m1);
 
-		Sphere sp2 = {{-3,0,30},9,1};
-		Material m2 = {{0,0,0},{1,0,0}};
+		Sphere sp2 = {{X(1),Y(1),30},10,1};
+		Material m2 = {{.5,.5,.5},{1,0,0},0.5};
 		s.spheres.push_back(sp2);
 		s.materials.push_back(m2);
 
-
-		Sphere sp3 = {{10,2,15},3,2};
-		Material m3 = {{0,0,0},{0,0,1}};
+		Sphere sp3 = {{X(2),Y(2),30},10,2};
+		Material m3 = {{.5,.5,.5},{0,0,1},0};
 		s.spheres.push_back(sp3);
 		s.materials.push_back(m3);
 
+#undef X
+#undef Y
 
 		int imgW = WIDTH;
 		int imgH = HEIGHT;
