@@ -184,26 +184,47 @@ int main(int argc, char *argv[])
 #define X(i) sin(i*2*M_PI/3)*10*2/sqrt(3)
 #define Y(i) cos(i*2*M_PI/3)*10*2/sqrt(3)
 		
-		Light l1 = {{0,30,-20},{0.5,0.5,0.5}};
+		Light l1 = {{0,30,-20},{2,2,2}};
 		s.lights.push_back(l1);
 		
  		Light l2 = {{30,-50,0},{1,1,1}};
  		s.lights.push_back(l2);
 		
 		Sphere sp1 = {{X(0),Y(0),30},10,0};
-		Material m1 = {{.5,.5,.5},{0.5,0.5,0},0.5};
+		Material m1 = {{.1,.1,.1},{0.5,0.5,0},60};
 		s.spheres.push_back(sp1);
 		s.materials.push_back(m1);
 
 		Sphere sp2 = {{X(1),Y(1),30},10,1};
-		Material m2 = {{.2,.2,.2},{0,0.5,0.5},0.5};
+		Material m2 = {{.1,.1,.1},{0,0.5,0.5},60};
 		s.spheres.push_back(sp2);
 		s.materials.push_back(m2);
 
 		Sphere sp3 = {{X(2),Y(2),30},10,2};
-		Material m3 = {{.5,.5,.5},{0.5,0,0.5},0.5};
+		Material m3 = {{.1,.1,.1},{0.5,0,0.5},60};
 		s.spheres.push_back(sp3);
 		s.materials.push_back(m3);
+		
+		// 		Light l1 = {{0,240,-100},{2,2,2}};
+// 		s.lights.push_back(l1);
+// 		
+//  		Light l2 = {{640,240,-10000.0},{0.6,0.7,1}};
+//  		s.lights.push_back(l2);
+// 		
+// 		Sphere sp1 = {{233,290,150},100,0};
+// 		Material m1 = {{.5,.5,.5},{1,1,0},60};
+// 		s.spheres.push_back(sp1);
+// 		s.materials.push_back(m1);
+// 
+// 		Sphere sp2 = {{407,290,150},100,1};
+// 		Material m2 = {{.5,.5,.5},{0,1,1},60};
+// 		s.spheres.push_back(sp2);
+// 		s.materials.push_back(m2);
+// 
+// 		Sphere sp3 = {{320,140,150},100,2};
+// 		Material m3 = {{.5,.5,.5},{1,0,1},60};
+// 		s.spheres.push_back(sp3);
+// 		s.materials.push_back(m3);
 
 #undef X
 #undef Y
