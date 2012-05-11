@@ -18,6 +18,6 @@ find_package(GLFW REQUIRED)
 
 INCLUDE_DIRECTORIES(${GLEW_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR} ${OPENCL_INCLUDE_DIR} ${GLFW_INCLUDE_DIR} ${OGLPLUS_INCLUDE_DIR} )
 
-add_executable(clraytracer main.cpp renderer.cpp)
+add_executable(clraytracer main.cpp renderer.cpp matrix.cpp)
 
 TARGET_LINK_LIBRARIES(clraytracer ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${OPENCL_LIBRARIES} ${GLFW_LIBRARIES})

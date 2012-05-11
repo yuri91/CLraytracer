@@ -4,14 +4,15 @@
 #include "objects.h"
 #include <vector>
 
+typedef cl_float16 Camera;
+
 struct Scene
 {
     std::vector<Sphere> spheres;
     std::vector<Light> lights;
     std::vector<Material> materials;
     
-    cl_float eye;
-    cl_float viewW, viewH;
+    Camera camera;
 };
 
 #endif // SCENE_H

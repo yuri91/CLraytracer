@@ -27,9 +27,10 @@
 #include <iostream>
 
 #include "renderer.h"
+#include "matrix.h"
 
 #define WIDTH 1024
-#define HEIGHT 768
+#define HEIGHT 1024
 
 int windowCloseCallback( )
 {
@@ -46,10 +47,19 @@ public:
 	oglplus::Program prog;
 	oglplus::Texture texture;
 	
+	Scene *scene;
+	Renderer *renderer;
+
+	int imgW;
+	int imgH;
+	
 public:
 	GLRenderer( )
 	{
 		glfwSetWindowTitle("CLraytracer");
+
+		imgW = WIDTH;
+		imgH = HEIGHT;
 	
 		// initializing openGL
 		{
@@ -128,11 +138,17 @@ public:
 		texture.Bind( Texture::Target::_2D );
 		texture.MagFilter( Texture::Target::_2D, TextureMagFilter::Linear );
 		texture.MinFilter( Texture::Target::_2D, TextureMinFilter::Linear );
-		texture.Image2D( Texture::Target::_2D, 0, PixelDataInternalFormat::RGBA, WIDTH,HEIGHT, 0, PixelDataFormat::RGBA, PixelDataType::Float, data );
+		texture.Image2D( Texture::Target::_2D, 0, PixelDataInternalFormat::RGBA, imgW, imgH, 0, PixelDataFormat::RGBA, PixelDataType::Float, data );
 	}
 	
 	void draw( )
 	{
+		static cl_float r = 0;
+		r += 0.01;
+		scene->camera = rotate( translate(identity4x4,{{0,sin(r)*50,10}}), {{0,sin(r),0}} );
+		std::vector<cl_float3> ris = renderer->compute( *scene, imgW, imgH );
+		setTexture( &ris[0] );
+		
 		using namespace oglplus;
 	
 		gl.Clear().ColorBuffer().DepthBuffer();
@@ -164,22 +180,14 @@ int main(int argc, char *argv[])
 	struct on_close { ~on_close(){ glfwCloseWindow(); } } _l2;
 
 	if( glewInit() != GLEW_OK ) {
-		throw( "glewInit failed" );
+		throw( "gl4x4ewInit failed" );
 	}
 	
 	try
 	{
 		GLRenderer GLr;
-		
-		
 		Renderer r;
-
 		Scene s;
-
-		s.eye = -10;
-
-		s.viewW = 10.24*1.5;
-		s.viewH = 7.68*1.5;
 		
 #define X(i) sin(i*2*M_PI/3)*10*2/sqrt(3)
 #define Y(i) cos(i*2*M_PI/3)*10*2/sqrt(3)
@@ -190,51 +198,30 @@ int main(int argc, char *argv[])
  		Light l2 = {{30,-50,0},{1,1,1}};
  		s.lights.push_back(l2);
 		
-		Sphere sp1 = {{X(0),Y(0),30},10,0};
-		Material m1 = {{.1,.1,.1},{0.5,0.5,0},60};
+		Light l3 = {{-30,50,-10},{3,3,3}};
+ 		s.lights.push_back(l3);
+		
+		Sphere sp1 = {{X(0),Y(0),60},10,0};
+		Material m1 = {{.6,.6,.6},{0.5,0.5,0},100};
 		s.spheres.push_back(sp1);
 		s.materials.push_back(m1);
 
-		Sphere sp2 = {{X(1),Y(1),30},10,1};
-		Material m2 = {{.1,.1,.1},{0,0.5,0.5},60};
+		Sphere sp2 = {{X(1),Y(1),60},10,1};
+		Material m2 = {{.1,.1,.1},{0,0.5,0.5},30};
 		s.spheres.push_back(sp2);
 		s.materials.push_back(m2);
 
-		Sphere sp3 = {{X(2),Y(2),30},10,2};
+		Sphere sp3 = {{X(2),Y(2),60},10,2};
 		Material m3 = {{.1,.1,.1},{0.5,0,0.5},60};
 		s.spheres.push_back(sp3);
 		s.materials.push_back(m3);
-		
-		// 		Light l1 = {{0,240,-100},{2,2,2}};
-// 		s.lights.push_back(l1);
-// 		
-//  		Light l2 = {{640,240,-10000.0},{0.6,0.7,1}};
-//  		s.lights.push_back(l2);
-// 		
-// 		Sphere sp1 = {{233,290,150},100,0};
-// 		Material m1 = {{.5,.5,.5},{1,1,0},60};
-// 		s.spheres.push_back(sp1);
-// 		s.materials.push_back(m1);
-// 
-// 		Sphere sp2 = {{407,290,150},100,1};
-// 		Material m2 = {{.5,.5,.5},{0,1,1},60};
-// 		s.spheres.push_back(sp2);
-// 		s.materials.push_back(m2);
-// 
-// 		Sphere sp3 = {{320,140,150},100,2};
-// 		Material m3 = {{.5,.5,.5},{1,0,1},60};
-// 		s.spheres.push_back(sp3);
-// 		s.materials.push_back(m3);
 
 #undef X
 #undef Y
+		
+		GLr.scene = &s;
+		GLr.renderer = &r;
 
-		int imgW = WIDTH;
-		int imgH = HEIGHT;
-		std::vector<cl_float3> ris = r.compute(s,imgW,imgH);
-		GLr.setTexture( &ris[0] );
-		
-		
 		GLr.mainLoop();
 	}
 	catch( oglplus::CompileError &err )
@@ -260,7 +247,8 @@ int main(int argc, char *argv[])
 		std::cerr << std::endl;
 		err.Cleanup();
 	}
-   
-    
+
+		 
+
     return EXIT_SUCCESS;
 }

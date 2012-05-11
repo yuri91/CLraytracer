@@ -101,10 +101,10 @@ std::vector<cl_float3> Renderer::compute(Scene& s, int imgW, int imgH)
 		int nMtr = s.materials.size();
 	
 		func(img,imgW,imgH,
-			 s.viewW,s.viewH,s.eye,
-			 sph,nSph,
-			 lgh,nLgh,
-			 mtr,nMtr
+		     s.camera,
+		     sph,nSph,
+		     lgh,nLgh,
+		     mtr,nMtr
 		);
 	
 		cmdqueue.flush();

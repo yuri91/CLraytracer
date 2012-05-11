@@ -24,24 +24,6 @@
 #define OBJECTS_H
 #include <CL/cl_platform.h>
 
-struct Sphere
-{
-    cl_float3 pos;
-    cl_float radius;
-    cl_uint materialID;
-};
-
-struct Light 
-{
-    cl_float3 pos;
-    cl_float3 color;
-};
-
-struct Material
-{
-    cl_float3 reflection;
-    cl_float3 color;
-    cl_float power;
-};
+#include "objectsCL.h"
 
 #endif

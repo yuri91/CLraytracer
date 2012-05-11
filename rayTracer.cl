@@ -19,32 +19,25 @@
  *    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
  
+typedef float cl_float;
+typedef float3 cl_float3;
+typedef float16 cl_float16;
+typedef uint cl_uint;
 
-typedef struct 
-{
-	float3 pos;
-	float radius;
-	int materialID;
-}Sphere;
+#include "../objectsCL.h"
 
-typedef struct 
-{
-	float3 pos;
-	float3 color;
-}Light ;
 
-typedef struct 
+float3 mult(const float16 matrix, const float3 vect)
 {
-	float3 reflection;
-	float3 color;
-	float power;
-}Material;
+	float4 vec = (float4)(vect,1);
+	float3 ris;
+	ris.x = matrix.s0*vec.s0 + matrix.s1*vec.s1 + matrix.s2*vec.s2 + matrix.s3*vec.s3;
+	ris.y = matrix.s4*vec.s0 + matrix.s5*vec.s1 + matrix.s6*vec.s2 + matrix.s7*vec.s3;
+	ris.z = matrix.s8*vec.s0 + matrix.s9*vec.s1 + matrix.sa*vec.s2 + matrix.sb*vec.s3;
+	
+	return ris;
+}
 
-typedef struct  
-{
-	float3 start;
-	float3 dir;
-}Ray;
 
  bool hitSphere(const Ray r, const Sphere s, float *t) 
  {  
@@ -102,23 +95,28 @@ typedef struct
 
 #define REFLECT(i,n) ( (i) - 2*dot((n),(i)) * (n) )
 
+
 __kernel void rayTracer (__global float3* img,const int imgW,const int imgH,
-						 const float viewW,const float viewH,const float eye,
-						 const __global Sphere* spheres,const int nSph,
-						 const __global Light* lights,const int nLgh,
-						 const __global Material* materials,const int nMtr)
+			const Camera cam,			
+			const __global Sphere* spheres,const int nSph,
+			const __global Light* lights,const int nLgh,
+			const __global Material* materials,const int nMtr)
 {
 	if(get_global_id(0)>=imgW || get_global_id(1)>=imgH)
 		return;
 		
-	float ambient_coef = 0.1f;
+	float ambient_coef = 0.2f;
 	float diffuse_coef = 1 - ambient_coef;
 	
 	Ray r;
-	r.start.x = (((float)get_global_id(0))/imgW) * viewW - viewW/2;
-	r.start.y = -(((float)get_global_id(1))/imgH) * viewH + viewH/2;
-	r.start.z = 0;
-	r.dir = normalize(r.start - (float3)(0,0,eye));
+	r.dir.x = (((float)get_global_id(0))/imgW) - 0.5;
+	r.dir.y = (((float)get_global_id(1))/imgH) - 0.5;
+	r.dir.z = 1;
+	r.start = (float3)(0,0,0);
+	
+	r.start = mult(cam,r.start);
+	r.dir = mult(cam,r.dir);
+	r.dir = normalize(r.dir - r.start);
 	
 	float3 color = (float3)(0,0,0);
 	float iterCoef = 1;
