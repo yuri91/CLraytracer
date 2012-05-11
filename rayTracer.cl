@@ -120,7 +120,7 @@ __kernel void rayTracer (__global float3* img,const int imgW,const int imgH,
 	
 	float3 color = (float3)(0,0,0);
 	float iterCoef = 1;
-	int missingIters = 5;
+	int missingIters = 20;
 	
 	while( iterCoef>0 && missingIters > 0 ) {
 		// finding the first surface colliding with the ray r

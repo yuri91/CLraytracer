@@ -29,6 +29,8 @@
 #include "renderer.h"
 #include "matrix.h"
 
+#include <functional>
+
 #define WIDTH 1024
 #define HEIGHT 1024
 
@@ -38,6 +40,8 @@ int windowCloseCallback( )
 	return i ++;
 }
 
+class GLRenderer;
+GLRenderer& GLRendererSingleton( ); // TODO: GCC bug?
 class GLRenderer
 {
 public:
@@ -53,10 +57,52 @@ public:
 	int imgW;
 	int imgH;
 	
+	cl_float3 movement;
+	cl_float3 rotation;
+	
 public:
+	static GLRenderer& singleton( )
+	{
+		static GLRenderer r;
+		return r;
+	}
+	
+private:
+	void keyCallback( int key, int action )
+	{
+#define DEFINE_CONTROL_KEY( keyA, keyB, var ) \
+	if( key == keyA ) { \
+		if( action == GLFW_PRESS ) { \
+			var += 1; \
+		} \
+		if( action == GLFW_RELEASE ) { \
+			var -= 1; \
+		} \
+	} \
+	if( key == keyB ) { \
+		if( action == GLFW_PRESS ) { \
+			var += -1; \
+		} \
+		if( action == GLFW_RELEASE ) { \
+			var += +1; \
+		} \
+	}
+		DEFINE_CONTROL_KEY( GLFW_KEY_UP, GLFW_KEY_DOWN, movement.s[2] )
+		DEFINE_CONTROL_KEY( GLFW_KEY_RIGHT, GLFW_KEY_LEFT, movement.s[0] )
+		DEFINE_CONTROL_KEY( GLFW_KEY_KP_ADD, GLFW_KEY_KP_SUBTRACT, movement.s[1] )
+		
+		DEFINE_CONTROL_KEY( GLFW_KEY_KP_6, GLFW_KEY_KP_4, rotation.s[0] )
+		DEFINE_CONTROL_KEY( GLFW_KEY_KP_2, GLFW_KEY_KP_8, rotation.s[1] )
+		DEFINE_CONTROL_KEY( GLFW_KEY_KP_7, GLFW_KEY_KP_9, rotation.s[2] )
+	}
 	GLRenderer( )
 	{
 		glfwSetWindowTitle("CLraytracer");
+		
+		glfwSetKeyCallback( [](int key, int action){ ::GLRendererSingleton().keyCallback(key,action); } );
+		//glfwSetKeyCallback( std::bind( &GLRenderer::keyCallback, &GLRenderer::singleton(), std::placeholders::_1, std::placeholders::_2 ) );
+		
+		// glfwEnable( GLFW_KEY_REPEAT );
 
 		imgW = WIDTH;
 		imgH = HEIGHT;
@@ -126,11 +172,11 @@ public:
 			gl.ClearDepth(1.0f);
 		}
 	}
-	
 	~GLRenderer( )
 	{
 	}
 	
+public:
 	void setTexture( cl_float3 *data )
 	{
 		using namespace oglplus;
@@ -143,9 +189,11 @@ public:
 	
 	void draw( )
 	{
+		using namespace std;
 		static cl_float r = 0;
 		r += 0.01;
-		scene->camera = rotate( translate(identity4x4,{{0,sin(r)*50,10}}), {{0,sin(r),0}} );
+		//scene->camera = Matrix4x4::identity().translate( {{0,sin(r)*50,10}} ).rotate( {{0,sin(r),0}} ).m;
+		scene->camera = Matrix4x4( scene->camera ).translate( movement ).rotate( rotation*0.01 ).m;
 		std::vector<cl_float3> ris = renderer->compute( *scene, imgW, imgH );
 		setTexture( &ris[0] );
 		
@@ -165,6 +213,10 @@ public:
 	}
 	
 };
+GLRenderer& GLRendererSingleton( ) // TODO: GCC bug?
+{
+	return GLRenderer::singleton();
+}
 
 
 int main(int argc, char *argv[]) 
@@ -185,9 +237,11 @@ int main(int argc, char *argv[])
 	
 	try
 	{
-		GLRenderer GLr;
+		GLRenderer& GLr = GLRenderer::singleton();
 		Renderer r;
 		Scene s;
+		
+		s.camera = Matrix4x4::identity().m;
 		
 #define X(i) sin(i*2*M_PI/3)*10*2/sqrt(3)
 #define Y(i) cos(i*2*M_PI/3)*10*2/sqrt(3)
