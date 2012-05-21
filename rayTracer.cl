@@ -24,7 +24,8 @@ typedef float3 cl_float3;
 typedef float16 cl_float16;
 typedef uint cl_uint;
 
-#include "../objectsCL.h"
+#include "objectsCL.h"
+
 
 
 float3 mult(const float16 matrix, const float3 vect)
@@ -96,7 +97,7 @@ float3 mult(const float16 matrix, const float3 vect)
 #define REFLECT(i,n) ( (i) - 2*dot((n),(i)) * (n) )
 
 
-__kernel void rayTracer (__global float3* img,const int imgW,const int imgH,
+__kernel void rayTracer (__write_only image2d_t img,const int imgW,const int imgH,
 			const Camera cam,			
 			const __global Sphere* spheres,const int nSph,
 			const __global Light* lights,const int nLgh,
@@ -109,8 +110,8 @@ __kernel void rayTracer (__global float3* img,const int imgW,const int imgH,
 	float diffuse_coef = 1 - ambient_coef;
 	
 	Ray r;
-	r.dir.x = (((float)get_global_id(0))/imgW) - 0.5;
-	r.dir.y = (((float)get_global_id(1))/imgH) - 0.5;
+	r.dir.x = (((float)get_global_id(0))/imgW) - 0.5f;
+	r.dir.y = (((float)get_global_id(1))/imgH) - 0.5f;
 	r.dir.z = 1;
 	r.start = (float3)(0,0,0);
 	
@@ -120,7 +121,7 @@ __kernel void rayTracer (__global float3* img,const int imgW,const int imgH,
 	
 	float3 color = (float3)(0,0,0);
 	float iterCoef = 1;
-	int missingIters = 20;
+	int missingIters = 5;
 	
 	while( iterCoef>0 && missingIters > 0 ) {
 		// finding the first surface colliding with the ray r
@@ -129,7 +130,9 @@ __kernel void rayTracer (__global float3* img,const int imgW,const int imgH,
 		float t = 0;
 		int index = checkNearestSphereHit(r,spheres,nSph,&t);
 		if( index == -1 ) {
-			img[get_global_id(1)*imgW+get_global_id(0)]=(float3)(0.0f,0.0f,0.0f);
+
+			int2 imgCoords = (int2)(get_global_id(0), get_global_id(1));
+			write_imagef(img, imgCoords, (float4)(0.0f,0.0f,0.0f,1.0f));
 			break;
 		}
 		float3 hitPoint = r.start + t*r.dir;
@@ -182,6 +185,8 @@ __kernel void rayTracer (__global float3* img,const int imgW,const int imgH,
 	color.y = 1.0f - exp(color.y * exposure);
 	color.z = 1.0f - exp(color.z * exposure);
 	
-	img[get_global_id(1)*imgW+get_global_id(0)] = color;
+
+	int2 imgCoords = (int2)(get_global_id(0), get_global_id(1));
+	write_imagef(img, imgCoords, (float4)(color,1.0f));
 	
 }

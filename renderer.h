@@ -33,6 +33,9 @@
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 
+#include <GL/gl.h>
+
+
 #include "scene.h"
 
 
@@ -42,7 +45,7 @@ public:
     Renderer();
     ~Renderer();
     
-    std::vector<cl_float3>  compute(Scene& s, int imgW, int imgH);
+    void  compute(Scene& s, int imgW, int imgH, GLuint tex);
     
 private:
     std::vector<cl::Platform> platforms;

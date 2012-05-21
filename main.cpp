@@ -97,7 +97,7 @@ private:
 	}
 	GLRenderer( )
 	{
-		glfwSetWindowTitle("CLraytracer");
+	    glfwSetWindowTitle("CLraytracer (0.0 FPS)");
 		
 		glfwSetKeyCallback( [](int key, int action){ ::GLRendererSingleton().keyCallback(key,action); } );
 		//glfwSetKeyCallback( std::bind( &GLRenderer::keyCallback, &GLRenderer::singleton(), std::placeholders::_1, std::placeholders::_2 ) );
@@ -170,6 +170,9 @@ private:
 	
 			gl.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			gl.ClearDepth(1.0f);
+			
+			std::vector<cl_float3> vec(imgH*imgW);
+			setTexture(&vec[0]);
 		}
 	}
 	~GLRenderer( )
@@ -189,13 +192,17 @@ public:
 	
 	void draw( )
 	{
+	    
+		oglplus::Exposed<oglplus::Texture> texExposed(texture) ;
+		GLuint tex = texExposed.Name();
+	    
 		using namespace std;
 		static cl_float r = 0;
 		r += 0.01;
 		//scene->camera = Matrix4x4::identity().translate( {{0,sin(r)*50,10}} ).rotate( {{0,sin(r),0}} ).m;
 		scene->camera = Matrix4x4( scene->camera ).translate( movement ).rotate( rotation*0.01 ).m;
-		std::vector<cl_float3> ris = renderer->compute( *scene, imgW, imgH );
-		setTexture( &ris[0] );
+		/*std::vector<cl_float3> ris = */renderer->compute( *scene, imgW, imgH,tex );
+// 		setTexture( &ris[0] );
 		
 		using namespace oglplus;
 	
@@ -204,11 +211,29 @@ public:
 	}
 	void mainLoop( )
 	{
+	        double time,t0,fps;
+		int frames = 0;
+		char title[100];
+		t0 = glfwGetTime();
 		while( glfwGetWindowParam(GLFW_OPENED) ) {
+			//get the current time
+			time = glfwGetTime();
+			
+			// Calcul and display the FPS
+			if((time-t0) > 1.0 || frames == 0)
+			{
+			    fps = (double)frames / (time-t0);
+			    sprintf(title, "CLraytracer (%.1f FPS)", fps);
+			    glfwSetWindowTitle(title);
+			    t0 = time;
+			    frames = 0;
+			}
+			frames ++;
+		    
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			draw();
 			glfwSwapBuffers();
-			glfwPollEvents( );
+			glfwPollEvents();
 		}
 	}
 	

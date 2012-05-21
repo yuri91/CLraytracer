@@ -21,6 +21,8 @@
 
 
 #include "renderer.h"
+#include <GL/glx.h>
+
 
 Renderer::Renderer()
 {
@@ -28,8 +30,19 @@ Renderer::Renderer()
 	cl::Platform::get(&platforms);
 
 	platforms.front().getDevices(CL_DEVICE_TYPE_GPU,&devices);
+	
+	// Linux
+	cl_context_properties cps[] = {
+	    CL_GL_CONTEXT_KHR,
+	    (cl_context_properties)glXGetCurrentContext(),
+	    CL_GLX_DISPLAY_KHR,
+	    (cl_context_properties)glXGetCurrentDisplay(),
+	    CL_CONTEXT_PLATFORM,
+	    (cl_context_properties)(platforms.front())(),
+	    0
+	};
 
-	context = cl::Context(devices);
+	context = cl::Context(devices,cps);
 	cmdqueue = cl::CommandQueue(context,devices.front());
 
 	std::unique_ptr<char> source;
@@ -50,7 +63,7 @@ Renderer::Renderer()
 	program = cl::Program(context , sourceCode);
 	try
 	{
-		program.build( devices/*, "-Wall"*/ );
+		program.build( devices,"-I ../"/*, "-Wall"*/ );
 		std::cout << "Building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices.front()) << std::endl;
 	}
 	catch(cl::Error& err)
@@ -78,40 +91,56 @@ Renderer::~Renderer()
 }
 
 
-std::vector<cl_float3> Renderer::compute(Scene& s, int imgW, int imgH)
+void Renderer::compute(Scene& s, int imgW, int imgH,GLuint tex)
 {
 	int groupSize = 8;
 	int rangeW = (imgW/groupSize)*groupSize+groupSize;
 	int rangeH = (imgH/groupSize)*groupSize+groupSize;
 	
+	cl_int result = CL_SUCCESS;
+	cl::Event ev;
 	
-	cl::KernelFunctor func = kernel.bind(cmdqueue,cl::NDRange(rangeW, rangeH), cl::NDRange(groupSize, groupSize));
 	
-	
-	cl::Buffer img(context,CL_MEM_WRITE_ONLY ,sizeof(cl_float3)*imgH*imgW); 
+	/*cl::Buffer img(context,CL_MEM_WRITE_ONLY ,sizeof(cl_float3)*imgH*imgW);*/ 
 	cl::Buffer sph(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR ,sizeof(Sphere)*s.spheres.size(),&s.spheres[0]); 
 	cl::Buffer lgh(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR ,sizeof(Light)*s.lights.size(),&s.lights[0]); 
 	cl::Buffer mtr(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR ,sizeof(Material)*s.materials.size(),&s.materials[0]); 
 	
 	try
 	{
+	    
+		cl::Image2DGL imgGL(context,CL_MEM_WRITE_ONLY,GL_TEXTURE_2D, 0, tex, nullptr);
+		
+		std::vector<cl::Memory> memObjs;
+		memObjs.clear();
+		memObjs.push_back(imgGL);
+		
+		
+		
+		cl::KernelFunctor func = kernel.bind(cmdqueue,cl::NDRange(rangeW, rangeH), cl::NDRange(groupSize, groupSize));
 		
 		int nSph = s.spheres.size();
 		int nLgh = s.lights.size();
 		int nMtr = s.materials.size();
+		
+		result = cmdqueue.enqueueAcquireGLObjects(&memObjs, NULL, &ev);
+		ev.wait();
 	
-		func(img,imgW,imgH,
+		func(imgGL,imgW,imgH,
 		     s.camera,
 		     sph,nSph,
 		     lgh,nLgh,
 		     mtr,nMtr
 		);
+		
+		result = cmdqueue.enqueueReleaseGLObjects(&memObjs, NULL, &ev);
+		ev.wait();
 	
 		cmdqueue.flush();
-		std::vector<cl_float3> result(imgW*imgH);
-	
-		cmdqueue.enqueueReadBuffer(img,true,0,sizeof(cl_float3)*imgH*imgW,&result[0]);
-		return result;
+// 		std::vector<cl_float3> result(imgW*imgH);
+// 	
+// 		cmdqueue.enqueueReadBuffer(img,true,0,sizeof(cl_float3)*imgH*imgW,&result[0]);
+// 		return result;
 	}
 	catch(cl::Error& err)
 	{
