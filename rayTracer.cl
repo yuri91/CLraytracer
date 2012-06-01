@@ -121,9 +121,9 @@ __kernel void rayTracer (__write_only image2d_t img,const int imgW,const int img
 	
 	float3 color = (float3)(0,0,0);
 	float iterCoef = 1;
-	int missingIters = 5;
+	int missingIters = 100;
 	
-	while( iterCoef>0 && missingIters > 0 ) {
+	while( iterCoef > 0.01 && missingIters > 0 ) {
 		// finding the first surface colliding with the ray r
 		// its distance from the ray emitter will be t the
 		// hitting surface's index will be index
