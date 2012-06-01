@@ -106,6 +106,9 @@ private:
 
 		imgW = WIDTH;
 		imgH = HEIGHT;
+
+		// disabling vertical sync
+		glfwSwapInterval(0);
 	
 		// initializing openGL
 		{
