@@ -1,9 +1,9 @@
-typedef struct 
+
+typedef struct
 {
-	cl_float3 pos;
-	cl_float radius;
+	int type;
 	int materialID;
-}Sphere;
+} CommonObject;
 
 typedef struct 
 {
@@ -25,5 +25,22 @@ typedef struct
 }Ray;
 
 typedef cl_float16 Camera;
+
+#ifdef CL_CODE
+typedef struct
+{
+	const __global char *objects;
+	int nObjects;
+	
+	const __global Light *lights;
+	int nLights;
+	const __global Material *materials;
+	int nMaterials;
+	
+	// int ambientLight; // between 0 (fully dark) and 1 (fully bright)
+} CLScene;
+#endif
+
+#include "cl/sphere.h"
 
 

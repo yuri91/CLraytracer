@@ -18,13 +18,14 @@
  *    with this program; if not, write to the Free Software Foundation, Inc.,
  *    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
- 
+
 typedef float cl_float;
 typedef float3 cl_float3;
 typedef float16 cl_float16;
 typedef uint cl_uint;
 
 #include "objectsCL.h"
+typedef CLScene Scene;
 
 
 
@@ -38,58 +39,51 @@ float3 mult(const float16 matrix, const float3 vect)
 	
 	return ris;
 }
-
-
- bool hitSphere(const Ray r, const Sphere s, float *t) 
- {  
-	float3 dist = s.pos-r.start;
-	float v = dot(r.dir,dist);
-	float disc = s.radius*s.radius - (dot(dist,dist)-v*v);
-	if(disc<0.0f)
-		return false;
-		
-	float d = sqrt(disc);
-	*t = v-d;
-	if( *t < 0 ) {
-		return false;
-	}
-	return true;
-	
- }
  
- int checkNearestSphereHit(const Ray r, const __global Sphere* vs,const int nSph, float* t)
- {
+int checkNearestHit( const Ray *r, const Scene* s, float* t )
+{
 	*t = -1;
 	float t_min;
-	int i ;
-	int index = -1;
-	for( i = 0; i<nSph; ++i )
-	{
-		if(hitSphere(r,vs[i],t))
-		{
-			if ( *t<t_min || index == -1 || *t<t_min )
-			{
-				t_min = *t;
-				index = i;
+	int i;
+	int offset = -1;
+	const __global char *currentOffset = s->objects;
+	for( i = 0; i < s->nObjects; ++i ) {
+		const __global CommonObject *currentObj = (const __global CommonObject*) currentOffset;
+		if( currentObj->type == SPHERE_TYPE ) {
+			const __global Sphere *sphere = (const __global Sphere*) currentObj;
+			if( hitSphere(r, sphere, t) ) {
+				if ( *t<t_min || offset == -1 || *t<t_min ) {
+					t_min = *t;
+					offset = currentOffset - s->objects;
+				}
 			}
+			currentOffset += sizeof(Sphere);
 		}
-		
+		else {
+			// TODO: ERROR
+		}
 	}
 	*t = t_min;
-	return index;
- }
+	return offset;
+}
  
- bool checkIfOtherSphereHit(const Ray r, const __global Sphere* vs,const int nSph,int current)
- {
+bool checkHit( const Ray *r, const Scene* s )
+{
 	float t;
-	int i ;
-	for(i = 0;i<nSph;i=i+1)
-	{
-		if( i!=current && hitSphere(r,vs[i],&t) )
-		{
-			return true;
+	int i;
+	const __global char *currentOffset = s->objects;
+	for( i = 0; i < s->nObjects; ++i ) {
+		const __global CommonObject *currentObj = (const __global CommonObject*) currentOffset;
+		if( currentObj->type == SPHERE_TYPE ) {
+			const __global Sphere *sphere = (const __global Sphere*) currentObj;
+			if( hitSphere(r,sphere,&t) && t >= 0.001 ) {
+				return true;
+			}
+			currentOffset += sizeof(Sphere);
 		}
-		
+		else {
+			// TODO: ERROR
+		}
 	}
 	return false;
 }
@@ -97,28 +91,48 @@ float3 mult(const float16 matrix, const float3 vect)
 #define REFLECT(i,n) ( (i) - 2*dot((n),(i)) * (n) )
 
 
-__kernel void rayTracer (__write_only image2d_t img,const int imgW,const int imgH,
-			const Camera cam,			
-			const __global Sphere* spheres,const int nSph,
-			const __global Light* lights,const int nLgh,
-			const __global Material* materials,const int nMtr)
+__kernel void rayTracer (__write_only image2d_t img, const int imgW, const int imgH,
+			const Camera cam,
+			const __global char* objects, const int nObjects,
+			const __global Light* lights, const int nLgh,
+			const __global Material* materials, const int nMtr )
 {
-	if(get_global_id(0)>=imgW || get_global_id(1)>=imgH)
+	if( get_global_id(0)>=imgW || get_global_id(1)>=imgH ) {
 		return;
-		
+	}
+	
+	// our pixel
+	int2 imgCoords = (int2)( get_global_id(0), get_global_id(1) );
+	
+	// initializing the scene object
+	Scene scene;
+	{
+		scene.objects = objects;
+		scene.nObjects = nObjects;
+		scene.lights = lights;
+		scene.nLights = nLgh;
+		scene.materials = materials;
+		scene.nMaterials = nMtr;
+	}
+	
+	// initializing lights (TODO: move this into scene)	
 	float ambient_coef = 0.2f;
 	float diffuse_coef = 1 - ambient_coef;
 	
+	// finding ray for this pixel
 	Ray r;
-	r.dir.x = (((float)get_global_id(0))/imgW) - 0.5f;
-	r.dir.y = (((float)get_global_id(1))/imgH) - 0.5f;
-	r.dir.z = 1;
-	r.start = (float3)(0,0,0);
+	{
+		r.dir.x = (((float)get_global_id(0))/imgW) - 0.5f;
+		r.dir.y = (((float)get_global_id(1))/imgH) - 0.5f;
+		r.dir.z = 1;
+		r.start = (float3)(0,0,0);
 	
-	r.start = mult(cam,r.start);
-	r.dir = mult(cam,r.dir);
-	r.dir = normalize(r.dir - r.start);
+		r.start = mult(cam,r.start);
+		r.dir = mult(cam,r.dir);
+		r.dir = normalize(r.dir - r.start);
+	}
 	
+	// computing the value for this pixel
 	float3 color = (float3)(0,0,0);
 	float iterCoef = 1;
 	int missingIters = 100;
@@ -128,65 +142,77 @@ __kernel void rayTracer (__write_only image2d_t img,const int imgW,const int img
 		// its distance from the ray emitter will be t the
 		// hitting surface's index will be index
 		float t = 0;
-		int index = checkNearestSphereHit(r,spheres,nSph,&t);
-		if( index == -1 ) {
-
-			int2 imgCoords = (int2)(get_global_id(0), get_global_id(1));
-			write_imagef(img, imgCoords, (float4)(0.0f,0.0f,0.0f,1.0f));
+		int offset = checkNearestHit( &r, &scene, &t );
+		if( offset == -1 ) {
+			// hitting nothing
 			break;
 		}
+		
+		// hit something...
 		float3 hitPoint = r.start + t*r.dir;
-		Material mat = materials[spheres[index].materialID];
+		const __global CommonObject *hitObject = (const __global CommonObject*) &scene.objects[offset];
+		Material mat = materials[ hitObject->materialID ];
 		color += mat.color * ambient_coef * iterCoef;
+		
+		// getting the normal of the hit surface
 		float3 norm;
+		{
+			if( hitObject->type == SPHERE_TYPE ) {
+				norm = getNormalForSphere( hitPoint, (const __global Sphere*) hitObject );
+			}
+			else {
+				// TODO: ERROR
+				write_imagef( img, imgCoords, (float4)(1.0f,1.0f,1.0f,1.0f) );
+				return ;
+			}
+		}
 		
 		// calculating the intensity of the light according
 		// to the lambert model
 		float shade;
 		int j;
-		for(j = 0;j<nLgh;j=j+1) {
-			Ray rToLight = {hitPoint,normalize(lights[j].pos-hitPoint)};
-			norm = normalize(hitPoint-spheres[index].pos);
-			shade = dot(norm,rToLight.dir);
-			if( shade < 0 ) {
-				// in shadow of this same sphere
+		for( j = 0; j < nLgh; ++j ) {
+			// ray to light
+			Ray rToLight = { hitPoint, normalize(lights[j].pos-hitPoint) };
+			
+			// checking whether it's shadowed by something else
+			if( checkHit( &rToLight, &scene ) ) {
+				// in shadow of another sphere, skipping this light...
 				continue;
 			}
-			if( checkIfOtherSphereHit(rToLight,spheres,nSph,index) ) {
-				// in shadow of another sphere
-				continue;
+			
+			// computing the shade
+			shade = dot(norm, rToLight.dir);
+			
+			// computing the actual pixel color
+			color += mat.color * diffuse_coef * fabs(shade) * lights[j].color * iterCoef;
+			
+			// applying the blinn effect
+			{
+				float fViewProjection = dot( r.dir, norm );
+				float3 blinnDir = rToLight.dir - r.dir;
+				float temp = dot(blinnDir, blinnDir);
+				if( temp != 0.0f ) {
+					float blinn = 1/sqrt(temp) * max(shade - fViewProjection , 0.0f);
+					blinn = iterCoef * pow(blinn, mat.power);
+					color += blinn * ( mat.reflection * lights[j].color );
+				}
 			}
-		
-			color += mat.color * diffuse_coef * shade * lights[j].color * iterCoef;
-			
-			
-		float fViewProjection = dot( r.dir, norm );
-			float3 blinnDir = rToLight.dir - r.dir;
-			float temp = dot(blinnDir, blinnDir);
-			if( temp != 0.0f ) {
-				float blinn = 1/sqrt(temp) * max(shade - fViewProjection , 0.0f);
-				blinn = iterCoef * pow(blinn, mat.power);
-				color += blinn * ( mat.reflection * lights[j].color );
-			}
-			
 		}
 		
-		// updating the ray
+		// reflecting the ray
 		r.start = hitPoint;
 		r.dir = REFLECT( r.dir, norm );
 		iterCoef *= sqrt(dot(mat.reflection,mat.reflection));
 		-- missingIters;
 	}
 	
-	
-		
+	// normalizing color between 0 and 1
 	float exposure = -1.00f;
 	color.x = 1.0f - exp(color.x * exposure);
 	color.y = 1.0f - exp(color.y * exposure);
 	color.z = 1.0f - exp(color.z * exposure);
 	
-
-	int2 imgCoords = (int2)(get_global_id(0), get_global_id(1));
+	// actually setting the pixel color
 	write_imagef(img, imgCoords, (float4)(color,1.0f));
-	
 }

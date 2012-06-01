@@ -63,7 +63,7 @@ Renderer::Renderer()
 	program = cl::Program(context , sourceCode);
 	try
 	{
-		program.build( devices,"-I ../"/*, "-Wall"*/ );
+		program.build( devices,"-DCL_CODE -I ../"/*, "-Wall"*/ );
 		std::cout << "Building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices.front()) << std::endl;
 	}
 	catch(cl::Error& err)
@@ -102,9 +102,9 @@ void Renderer::compute(Scene& s, int imgW, int imgH,GLuint tex)
 	
 	
 	/*cl::Buffer img(context,CL_MEM_WRITE_ONLY ,sizeof(cl_float3)*imgH*imgW);*/ 
-	cl::Buffer sph(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR ,sizeof(Sphere)*s.spheres.size(),&s.spheres[0]); 
-	cl::Buffer lgh(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR ,sizeof(Light)*s.lights.size(),&s.lights[0]); 
-	cl::Buffer mtr(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR ,sizeof(Material)*s.materials.size(),&s.materials[0]); 
+	cl::Buffer sph(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Sphere)*s.spheres.size(), &s.spheres[0]);
+	cl::Buffer lgh(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Light)*s.lights.size(), &s.lights[0]);
+	cl::Buffer mtr(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Material)*s.materials.size(), &s.materials[0]);
 	
 	try
 	{
