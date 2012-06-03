@@ -2,12 +2,13 @@
  
  Working features:
  *support for spheres,basic materials and light points to place in the scene
- *lambertian behavior of diffuse light and shadows
+ *reflection with blinn/phong behavior
+ *ability to control the camera
+ *opengl/opencl interop
  
  
  TODO:
- *reflection and refraction
+ *refraction
  *load the scene from a file
- *draw directly in an opengl texture
- *new shapes
+ *new primitives(planes,triangles,meshes)
  *textures
