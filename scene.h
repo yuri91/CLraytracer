@@ -8,7 +8,8 @@ typedef cl_float16 Camera;
 
 struct Scene
 {
-    std::vector<Sphere> spheres;
+    std::vector<char> objects;
+    int nObj;
     std::vector<Light> lights;
     std::vector<Material> materials;
     

@@ -102,7 +102,7 @@ void Renderer::compute(Scene& s, int imgW, int imgH,GLuint tex)
 	
 	
 	/*cl::Buffer img(context,CL_MEM_WRITE_ONLY ,sizeof(cl_float3)*imgH*imgW);*/ 
-	cl::Buffer sph(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Sphere)*s.spheres.size(), &s.spheres[0]);
+	cl::Buffer obj(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, s.objects.size(), &s.objects[0]);
 	cl::Buffer lgh(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Light)*s.lights.size(), &s.lights[0]);
 	cl::Buffer mtr(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Material)*s.materials.size(), &s.materials[0]);
 	
@@ -119,7 +119,7 @@ void Renderer::compute(Scene& s, int imgW, int imgH,GLuint tex)
 		
 		cl::KernelFunctor func = kernel.bind(cmdqueue,cl::NDRange(rangeW, rangeH), cl::NDRange(groupSize, groupSize));
 		
-		int nSph = s.spheres.size();
+		int nObj = s.nObj;
 		int nLgh = s.lights.size();
 		int nMtr = s.materials.size();
 		
@@ -128,7 +128,7 @@ void Renderer::compute(Scene& s, int imgW, int imgH,GLuint tex)
 	
 		func(imgGL,imgW,imgH,
 		     s.camera,
-		     sph,nSph,
+		     obj,nObj,
 		     lgh,nLgh,
 		     mtr,nMtr
 		);

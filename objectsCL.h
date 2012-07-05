@@ -42,5 +42,6 @@ typedef struct
 #endif
 
 #include "cl/sphere.h"
+#include "cl/plane.h"
 
 

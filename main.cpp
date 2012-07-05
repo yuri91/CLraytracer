@@ -30,6 +30,7 @@
 #include "matrix.h"
 
 #include <functional>
+#include <algorithm>
 
 #define WIDTH 1024
 #define HEIGHT 1024
@@ -283,20 +284,33 @@ int main(int argc, char *argv[])
 		Light l3 = {{-30,50,-10},{3,3,3}};
  		s.lights.push_back(l3);
 		
+		
+		
+		std::vector<Plane> planes;
+		Plane p1 = {{PLANE_TYPE,0}, {0,0,60},{0,0,1}};
+		planes.push_back(p1);
+		
+		std::vector<Sphere> spheres;
 		Sphere sp1 = {{SPHERE_TYPE,0}, {X(0),Y(0),60},10};
 		Material m1 = {{.6,.6,.6},{0.5,0.5,0},100};
-		s.spheres.push_back(sp1);
+		spheres.push_back(sp1);
 		s.materials.push_back(m1);
 
 		Sphere sp2 = {{SPHERE_TYPE,1}, {X(1),Y(1),60},10};
 		Material m2 = {{.1,.1,.1},{0,0.5,0.5},30};
-		s.spheres.push_back(sp2);
+		spheres.push_back(sp2);
 		s.materials.push_back(m2);
 
 		Sphere sp3 = {{SPHERE_TYPE,2}, {X(2),Y(2),60},10};
 		Material m3 = {{.1,.1,.1},{0.5,0,0.5},60};
-		s.spheres.push_back(sp3);
+		spheres.push_back(sp3);
 		s.materials.push_back(m3);
+		
+		
+		std::copy((char*)(&spheres[0]),(char*)(&spheres[0]+spheres.size()*sizeof(Sphere)),std::back_inserter(s.objects));
+		std::copy((char*)(&planes[0]),(char*)(&planes[0]+planes.size()*sizeof(Plane)),std::back_inserter(s.objects));
+		s.nObj=spheres.size()+planes.size();
+		
 
 #undef X
 #undef Y

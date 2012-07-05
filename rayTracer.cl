@@ -59,6 +59,16 @@ int checkNearestHit( const Ray *r, const Scene* s, float* t )
 			}
 			currentOffset += sizeof(Sphere);
 		}
+		else if( currentObj->type == PLANE_TYPE ) {
+		    	const __global Plane *plane = (const __global Plane*) currentObj;
+			if( hitPlane(r, plane, t) ) {
+				if ( *t<t_min || offset == -1 || *t<t_min ) {
+					t_min = *t;
+					offset = currentOffset - s->objects;
+				}
+			}
+			currentOffset += sizeof(Plane);
+		}
 		else {
 			// TODO: ERROR
 		}
@@ -80,6 +90,13 @@ bool checkHit( const Ray *r, const Scene* s )
 				return true;
 			}
 			currentOffset += sizeof(Sphere);
+		}
+		else if( currentObj->type == PLANE_TYPE ) {
+			const __global Plane *plane = (const __global Plane*) currentObj;
+			if( hitPlane(r,plane,&t) && t >= 0.001 ) {
+				return true;
+			}
+			currentOffset += sizeof(Plane);
 		}
 		else {
 			// TODO: ERROR
@@ -159,6 +176,11 @@ __kernel void rayTracer (__write_only image2d_t img, const int imgW, const int i
 		{
 			if( hitObject->type == SPHERE_TYPE ) {
 				norm = getNormalForSphere( hitPoint, (const __global Sphere*) hitObject );
+			}
+			else if( hitObject->type == PLANE_TYPE ) {
+				norm = getNormalForPlane( hitPoint, (const __global Plane*) hitObject );
+				if(dot(norm,r.dir)>0);
+				norm = - norm;
 			}
 			else {
 				// TODO: ERROR
